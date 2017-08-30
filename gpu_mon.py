@@ -1,8 +1,11 @@
 #!/usr/bin/env python
+import time
 import argparse
 import logging
 
 from gpu_mon import config
+from gpu_mon import proc
+from gpu_mon import gpu
 
 
 log = logging.getLogger("gpu_mon")
@@ -18,5 +21,21 @@ if __name__ == "__main__":
                         help="Configuration file to use, default=" + DEFAULT_CONFIG)
     args = parser.parse_args()
     conf = config.Configuration.read(args.conf)
+
+    gpus = gpu.detect_gpus()
+    log.info("GPUs detected: ")
+    for g in gpus:
+        log.info(g)
+
+    files = [g.file_name for g in gpus]
+
+    try:
+        while True:
+            time.sleep(conf.interval_seconds)
+            processes = proc.get_processes(files)
+            for p in processes:
+                log.info(p)
+    except KeyboardInterrupt:
+        log.info("Interrupt received, exit gracefully")
 
     pass
