@@ -6,6 +6,7 @@ import logging
 from gpu_mon import config
 from gpu_mon import proc
 from gpu_mon import gpu
+from gpu_mon import tty
 
 
 log = logging.getLogger("gpu_mon")
@@ -31,10 +32,13 @@ if __name__ == "__main__":
 
     try:
         while True:
-            time.sleep(conf.interval_seconds)
             processes = proc.get_processes(files)
             for p in processes:
                 log.info(p)
+            active_users = tty.active_users(conf.tty_conf)
+            for u in active_users:
+                log.info(u)
+            time.sleep(conf.interval_seconds)
     except KeyboardInterrupt:
         log.info("Interrupt received, exit gracefully")
 

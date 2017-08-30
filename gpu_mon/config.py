@@ -72,7 +72,7 @@ class TTYConfiguration:
         assert isinstance(idle_seconds, int)
         self.enabled = enabled
         self.whitelist = whitelist
-        self.idle_secords = idle_seconds
+        self.idle_seconds = idle_seconds
 
     @classmethod
     def config_from_section(cls, section):
