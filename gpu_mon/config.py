@@ -77,23 +77,30 @@ class TTYConfiguration:
     @classmethod
     def config_from_section(cls, section):
         assert isinstance(section, configparser.SectionProxy)
-        enabled = section.get_bool('enabled')
-        whitelist = section['whitelist'].split(',')
-        idle_seconds = section.get_int('idle_seconds')
+        enabled = section.getboolean('enabled')
+        whitelist = section.get('whitelist', fallback='').split(',')
+        idle_seconds = section.getint('idle_seconds', fallback=0)
         return TTYConfiguration(enabled, whitelist, idle_seconds)
 
 class Configuration:
-    def __init__(self, gpus_conf, processes_conf, tty_conf):
+    def __init__(self, interval_seconds, gpus_conf, processes_conf, tty_conf):
+        self.interval_seconds = interval_seconds
         self.gpus_conf = gpus_conf
         self.processes_conf = processes_conf
         self.tty_conf = tty_conf
+
+    @classmethod
+    def config_from_parser(cls, parser):
+        assert isinstance(parser, configparser.ConfigParser)
+        interval_seconds = parser['defaults'].getint('interval_seconds')
+        gpus = GPUConfiguration.configs_from_parser(parser)
+        processes = ProcessConfiguration.configs_from_parser(parser)
+        tty_conf = TTYConfiguration.config_from_section(parser['tty'])
+        return Configuration(interval_seconds, gpus, processes, tty_conf)
 
     @classmethod
     def read(cls, file_name):
         conf = configparser.ConfigParser()
         if not conf.read(file_name):
             raise FileNotFoundError("Configuration not found: %s" % file_name)
-        gpus = GPUConfiguration.configs_from_parser(conf)
-        processes = ProcessConfiguration.configs_from_parser(conf)
-        tty_conf = TTYConfiguration.config_from_section(conf['tty'])
-        return Configuration(gpus, processes, tty_conf)
+        return cls.config_from_parser(conf)
