@@ -19,3 +19,15 @@ def detect_gpus():
             pass
     result.sort(key=lambda g: g.id)
     return result
+
+
+def format_gpu_id(gpu_id):
+    """
+    Represent gpu id in text form
+    :param gpu_id: None if all gpus or int gpu id
+    :return:
+    """
+    if gpu_id is None:
+        return "all GPUs"
+    else:
+        return "GPU %d" % gpu_id

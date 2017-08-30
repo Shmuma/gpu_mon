@@ -28,11 +28,9 @@ if __name__ == "__main__":
     for g in gpus:
         log.info(g)
 
-    files = [g.file_name for g in gpus]
-
     try:
         while True:
-            processes = proc.get_processes(files)
+            processes = proc.get_processes(gpus)
             for p in processes:
                 log.info(p)
             active_users = tty.active_users(conf.tty_conf)
