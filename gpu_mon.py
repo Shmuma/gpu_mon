@@ -2,6 +2,9 @@
 import argparse
 import logging
 
+from gpu_mon import config
+
+
 log = logging.getLogger("gpu_mon")
 
 DEFAULT_CONFIG = "~/.config/gpu_mon.conf"
@@ -14,6 +17,6 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--conf", default=DEFAULT_CONFIG,
                         help="Configuration file to use, default=" + DEFAULT_CONFIG)
     args = parser.parse_args()
-
+    conf = config.Configuration.read(args.conf)
 
     pass
