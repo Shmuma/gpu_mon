@@ -1,3 +1,4 @@
+import os
 import configparser
 
 
@@ -102,7 +103,7 @@ class Configuration:
     @classmethod
     def read(cls, file_name):
         conf = configparser.ConfigParser()
-        if not conf.read(file_name):
+        if not conf.read(os.path.expanduser(file_name)):
             raise FileNotFoundError("Configuration not found: %s" % file_name)
         return cls.config_from_parser(conf)
 
@@ -112,7 +113,7 @@ class Configuration:
         :param gpu_id: ID of gpu or None for all gpus 
         :return: ProcessConfiguration or None if not found 
         """
-        for c in self.gpus_conf:
+        for c in self.processes_conf:
             if c.gpu_indices is None and gpu_id is None:
                 return c
             if gpu_id is None:

@@ -16,19 +16,20 @@ ProcInfo = collections.namedtuple('ProcInfo', field_names=['file_name', 'gpu_id'
 
 
 def _parse_fuser_output(data_str, file_to_gpu_id):
+    print(data_str)
     result = []
     cur_fname = None
 
     for l in data_str.strip().split('\n'):
         parts = re.split(r'\s+', l)
-        if not parts:
+        if not parts or len(parts) < 5:
             continue
         if parts[0].endswith(':'):
-            cur_fname = parts.pop(0)[:-1]
+            cur_fname = parts[0][:-1]
         if cur_fname is None:
             continue
-        pid = int(parts[1])
-        proc_name = parts[3]
+        pid = int(parts[2])
+        proc_name = parts[4]
         result.append(ProcInfo(file_name=cur_fname, gpu_id=file_to_gpu_id[cur_fname], pid=pid, name=proc_name))
 
     return result
@@ -42,7 +43,8 @@ def get_processes(gpu_infos):
     """
     files_to_ids = {gpu.file_name: gpu.id for gpu in gpu_infos}
     try:
-        out = subprocess.check_output(['fuser', '-av'] + list(files_to_ids.keys()), stderr=subprocess.STDOUT)
+        args = ['fuser', '-av'] + list(files_to_ids.keys())
+        out = subprocess.run(args, stderr=subprocess.STDOUT, stdout=subprocess.PIPE).stdout
     except Exception as e:
         log.error("Error occured during fuser: %s", e)
         return None
@@ -89,7 +91,7 @@ class ProcessTracker:
             if self.is_our_pid(proc.pid):
                 self.log.info("Our own pid in proc: %s", proc)
                 continue
-            if self.is_whitelist_proc_name(proc.name):
+            if self.is_whitelist_proc_name(proc.gpu_id, proc.name):
                 self.log.info("Whitelisted proc: %s", proc)
                 continue
             idle_gpus.discard(proc.gpu_id)
@@ -110,18 +112,29 @@ class ProcessTracker:
         if len(idle_gpus) == len(gpus):
             proc_conf = self.conf.process_config(None)
             if proc_conf:
-                self.started[None] = self._start_by_conf(proc_conf)
+                r = self._start_by_conf(proc_conf)
+                if r is not None:
+                    self.started[None] = r
                 idle_gpus.clear()
 
         for gpu_id in idle_gpus:
             proc_conf = self.conf.process_config(gpu_id)
             if proc_conf:
-                self.started[gpu_id] = self._stop_by_id(proc_conf)
+                r = self._start_by_conf(proc_conf)
+                if r is not None:
+                    self.started[gpu_id] = r
             else:
                 self.log.warning("GPU %d is idle, but we have no process config, ignored", gpu_id)
 
+    def _start_by_conf(self, proc_conf):
+        """
+        Start subprocess using ProcConfiguration object
+        :param proc_conf: 
+        :return: Popen object instance
+        """
+        assert isinstance(proc_conf, config.ProcessConfiguration)
 
-
+        self.log.info("Starting: %s", proc_conf)
 
 
     def _running_on_gpu(self, gpu_id):
@@ -159,12 +172,15 @@ class ProcessTracker:
                 return True
         return False
 
-    def is_whitelist_proc_name(self, name):
+    def is_whitelist_proc_name(self, gpu_id, name):
         """
         Checks that this name is prefix of one of whitelisted processes
         """
-        for wl in self.conf.gpus_conf.ignore_programs:
-            if wl.startswith(name):
-                return True
+        for conf in self.conf.gpus_conf:
+            assert isinstance(conf, config.GPUConfiguration)
+            if conf.gpu_indices is None or gpu_id in conf.gpu_indices:
+                for wl in conf.ignore_programs:
+                    if wl.startswith(name):
+                        return True
         return False
 

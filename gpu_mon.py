@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import time
 import argparse
 import logging
@@ -28,6 +28,8 @@ if __name__ == "__main__":
     for g in gpus:
         log.info(g)
 
+    proc_tracker = proc.ProcessTracker(conf)
+
     try:
         while True:
             processes = proc.get_processes(gpus)
@@ -36,6 +38,7 @@ if __name__ == "__main__":
             active_users = tty.active_users(conf.tty_conf)
             for u in active_users:
                 log.info(u)
+            proc_tracker.check(gpus, processes, active_users)
             time.sleep(conf.interval_seconds)
     except KeyboardInterrupt:
         log.info("Interrupt received, exit gracefully")
