@@ -24,10 +24,12 @@ def detect_gpus():
 def format_gpu_id(gpu_id):
     """
     Represent gpu id in text form
-    :param gpu_id: None if all gpus or int gpu id
+    :param gpu_id: None if all gpus or int gpu id or set of gpu ids
     :return:
     """
     if gpu_id is None:
         return "all GPUs"
+    elif isinstance(gpu_id, set):
+        return "GPUs %s" % (",".join(map(str, sorted(gpu_id))))
     else:
         return "GPU %d" % gpu_id

@@ -16,7 +16,6 @@ ProcInfo = collections.namedtuple('ProcInfo', field_names=['file_name', 'gpu_id'
 
 
 def _parse_fuser_output(data_str, file_to_gpu_id):
-    print(data_str)
     result = []
     cur_fname = None
 
@@ -66,7 +65,7 @@ class ProcessTracker:
         """
         Kill all started processes and exit gracefully
         """
-        pass
+        self._stop_everything()
 
     def check(self, gpus, processes, active_users):
         """
@@ -75,7 +74,8 @@ class ProcessTracker:
         :param processes: list of ProcInfo instances
         :param active_users: list of active users
         """
-        # TODO: check and cleanup dead processes
+        self._check_running()
+
         # if there are some users active and we have anything running, stop, without even checking for idle
         if active_users:
             if self.started:
@@ -88,8 +88,13 @@ class ProcessTracker:
         # if there are active non-our processes, stop matching gpu workers
         for proc in processes:
             assert isinstance(proc, ProcInfo)
-            if self.is_our_pid(proc.pid):
+            # is_our_pid is strict check
+            if self.is_our_pid(proc.gpu_id, proc.pid):
                 self.log.info("Our own pid in proc: %s", proc)
+                idle_gpus.discard(proc.gpu_id)
+                continue
+            # if this proc.pid is in our pids, it cannot be preemptor
+            if self.is_any_our_pid(proc.pid):
                 continue
             if self.is_whitelist_proc_name(proc.gpu_id, proc.name):
                 self.log.info("Whitelisted proc: %s", proc)
@@ -126,6 +131,21 @@ class ProcessTracker:
             else:
                 self.log.warning("GPU %d is idle, but we have no process config, ignored", gpu_id)
 
+    def _check_running(self):
+        """
+        Check running processes and cleanup dead
+        """
+        dead = []
+        for gpu_id, p in self.started.items():
+            p.poll()
+            if p.returncode is None:
+                continue
+            p.wait(timeout=1)
+            self.log.info("Process for %s is terminated", gpu.format_gpu_id(gpu_id))
+            dead.append(gpu_id)
+        for d in dead:
+            self.started.pop(d)
+
     def _start_by_conf(self, proc_conf):
         """
         Start subprocess using ProcConfiguration object
@@ -134,8 +154,14 @@ class ProcessTracker:
         """
         assert isinstance(proc_conf, config.ProcessConfiguration)
 
-        self.log.info("Starting: %s", proc_conf)
-
+        args = list(proc_conf.cmd.split(' '))
+        self.log.info("Starting: %s on %s", proc_conf.cmd, gpu.format_gpu_id(proc_conf.gpu_indices))
+        if proc_conf.gpu_indices is not None:
+            env = {"CUDA_VISIBLE_DEVICES": ",".join(map(str, sorted(proc_conf.gpu_indices)))}
+        else:
+            env = None
+        p = subprocess.Popen(args, cwd=proc_conf.dir, env=env)
+        return p
 
     def _running_on_gpu(self, gpu_id):
         """
@@ -163,10 +189,16 @@ class ProcessTracker:
         proc.kill()
         proc.wait()
 
-    def is_our_pid(self, pid):
+    def is_our_pid(self, gpu_id, pid):
         """
         Check that this pid is from our process
         """
+        for proc_gpu_id, proc in self.started.items():
+            if proc_gpu_id == gpu_id and proc.pid == pid:
+                return True
+        return False
+
+    def is_any_our_pid(self, pid):
         for proc in self.started.values():
             if proc.pid == pid:
                 return True
