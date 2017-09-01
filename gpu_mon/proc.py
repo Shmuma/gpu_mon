@@ -161,7 +161,7 @@ class ProcessTracker:
             env = {"CUDA_VISIBLE_DEVICES": ",".join(map(str, sorted(proc_conf.gpu_indices)))}
         else:
             env = None
-        p = subprocess.Popen(args, cwd=proc_conf.dir, env=env)
+        p = subprocess.Popen(args, cwd=proc_conf.dir, env=env, stdout=subprocess.DEVNULL)
         return p
 
     def _running_on_gpu(self, gpu_id):
