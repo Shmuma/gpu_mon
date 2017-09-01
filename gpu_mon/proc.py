@@ -66,18 +66,22 @@ class ProcessTracker:
         """
         pass
 
-    def check(self, processes, active_users):
+    def check(self, gpus, processes, active_users):
         """
         Perform check for new observations got and modify started processes set accordingly
+        :param gpus: list of GPUinfo for all GPUs
         :param processes: list of ProcInfo instances
         :param active_users: list of active users
         """
         # TODO: check and cleanup dead processes
-        # if there are some users active and we have anything running, stop
-        if active_users and self.started:
-            self.log.info("Users %s become active, stop %d processes", active_users, len(self.started))
-            self._stop_everything()
+        # if there are some users active and we have anything running, stop, without even checking for idle
+        if active_users:
+            if self.started:
+                self.log.info("Users %s become active, stop %d processes", active_users, len(self.started))
+                self._stop_everything()
             return
+
+        idle_gpus = {g.id for g in gpus}
 
         # if there are active non-our processes, stop matching gpu workers
         for proc in processes:
@@ -88,19 +92,58 @@ class ProcessTracker:
             if self.is_whitelist_proc_name(proc.name):
                 self.log.info("Whitelisted proc: %s", proc)
                 continue
-            running_keys = self._running_keys(proc.gpu_id)
-            if running_keys:
-                self.log.info("Stop %d processes preempted by proc %s", len(running_keys), proc)
-                for gpu_id in running_keys:
+            idle_gpus.discard(proc.gpu_id)
+            running_ids = self._running_on_gpu(proc.gpu_id)
+            if running_ids:
+                self.log.info("Stop %d processes preempted by proc %s", len(running_ids), proc)
+                for gpu_id in running_ids:
                     self._stop_by_id(gpu_id)
+
+        # no gpus, no actions
+        if not idle_gpus:
+            return
+
+        # in case we have idle gpus, try to start something on them
+        self.log.info("%d gpus are idle", len(idle_gpus))
+
+        # ALL process configuration has preference
+        if len(idle_gpus) == len(gpus):
+            proc_conf = self.conf.process_config(None)
+            if proc_conf:
+                self.started[None] = self._start_by_conf(proc_conf)
+                idle_gpus.clear()
+
+        for gpu_id in idle_gpus:
+            proc_conf = self.conf.process_config(gpu_id)
+            if proc_conf:
+                self.started[gpu_id] = self._stop_by_id(proc_conf)
+            else:
+                self.log.warning("GPU %d is idle, but we have no process config, ignored", gpu_id)
+
+
+
+
+
+    def _running_on_gpu(self, gpu_id):
+        """
+        Return list of GPU ids for processes occuping this gpu. 
+        :param gpu_id: GPU id or None for all GPUs 
+        :return: list of GPU ids 
+        """
+        if gpu_id is None:
+            return list(self.started.keys())
+        if None in self.started:
+            return [None]
+        if gpu_id not in self.started:
+            return []
+        return [gpu_id]
 
     def _stop_everything(self):
         if not self.started:
             return
-        for gpu_id, proc in self.started.items():
+        for gpu_id in self.started.keys():
             self.log.info("Stopping proc for %s", gpu.format_gpu_id(gpu_id))
-            proc.kill()
-            proc.wait()
+            self._stop_by_id(gpu_id)
 
     def _stop_by_id(self, gpu_id):
         proc = self.started.pop(gpu_id, None)

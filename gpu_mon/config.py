@@ -82,6 +82,7 @@ class TTYConfiguration:
         idle_seconds = section.getint('idle_seconds', fallback=0)
         return TTYConfiguration(enabled, whitelist, idle_seconds)
 
+
 class Configuration:
     def __init__(self, interval_seconds, gpus_conf, processes_conf, tty_conf):
         self.interval_seconds = interval_seconds
@@ -104,3 +105,17 @@ class Configuration:
         if not conf.read(file_name):
             raise FileNotFoundError("Configuration not found: %s" % file_name)
         return cls.config_from_parser(conf)
+
+    def process_config(self, gpu_id):
+        """
+        Try to return process configuration for GPU id if it's present
+        :param gpu_id: ID of gpu or None for all gpus 
+        :return: ProcessConfiguration or None if not found 
+        """
+        for c in self.gpus_conf:
+            if c.gpu_indices is None and gpu_id is None:
+                return c
+            if gpu_id is None:
+                continue
+            if gpu_id in c.gpu_indices:
+                return c
