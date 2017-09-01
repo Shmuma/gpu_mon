@@ -84,6 +84,7 @@ class ProcessTracker:
             return
 
         idle_gpus = {g.id for g in gpus}
+        all_pids = {p.pid for p in self.started.values()}
 
         # if there are active non-our processes, stop matching gpu workers
         for proc in processes:
@@ -94,7 +95,7 @@ class ProcessTracker:
                 idle_gpus.discard(proc.gpu_id)
                 continue
             # if this proc.pid is in our pids, it cannot be preemptor
-            if self.is_any_our_pid(proc.pid):
+            if proc.pid in all_pids:
                 continue
             if self.is_whitelist_proc_name(proc.gpu_id, proc.name):
                 self.log.info("Whitelisted proc: %s", proc)
@@ -195,12 +196,6 @@ class ProcessTracker:
         """
         for proc_gpu_id, proc in self.started.items():
             if proc_gpu_id == gpu_id and proc.pid == pid:
-                return True
-        return False
-
-    def is_any_our_pid(self, pid):
-        for proc in self.started.values():
-            if proc.pid == pid:
                 return True
         return False
 
