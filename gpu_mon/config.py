@@ -38,13 +38,15 @@ class GPUConfiguration:
 
 
 class ProcessConfiguration:
-    def __init__(self, gpu_indices, dir, cmd):
+    def __init__(self, gpu_indices, dir, cmd, log):
         assert isinstance(gpu_indices, (set, type(None)))
         assert isinstance(dir, str)
         assert isinstance(cmd, str)
+        assert isinstance(log, (str, type(None)))
         self.gpu_indices = gpu_indices
         self.dir = dir
         self.cmd = cmd
+        self.log = log
 
     @classmethod
     def config_from_section(cls, section):
@@ -52,7 +54,8 @@ class ProcessConfiguration:
         indices = parse_gpu_indices(section['gpus'])
         dir = section['dir']
         cmd = section['cmd']
-        return ProcessConfiguration(indices, dir, cmd)
+        log = section.get('log')
+        return ProcessConfiguration(indices, dir, cmd, log)
 
     @classmethod
     def configs_from_parser(cls, parser):

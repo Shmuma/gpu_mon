@@ -1,10 +1,11 @@
 """
 Get list of processes IDs with their names which open given files
 """
+import os
+import re
 import logging
 import collections
 import subprocess
-import re
 
 from . import config
 from . import gpu
@@ -161,7 +162,11 @@ class ProcessTracker:
             env = {"CUDA_VISIBLE_DEVICES": ",".join(map(str, sorted(proc_conf.gpu_indices)))}
         else:
             env = None
-        p = subprocess.Popen(args, cwd=proc_conf.dir, env=env, stdout=subprocess.DEVNULL)
+        if proc_conf.log is None:
+            stdout = None
+        else:
+            stdout = os.open(proc_conf.log, os.O_APPEND)
+        p = subprocess.Popen(args, cwd=proc_conf.dir, env=env, stdout=stdout, stderr=subprocess.STDOUT)
         return p
 
     def _running_on_gpu(self, gpu_id):
