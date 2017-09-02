@@ -5,7 +5,7 @@ Python script which monitors gpu access and manages external programs when GPU i
 
 Every N seconds it checks /dev/nvidiaX device file for other processes accessing them (using fuser tool). 
 According to this, it treats gpu card as idle or busy. If GPU becomes idle, gpu_mon starts external program, which will 
-be stopped when device file will be accesses by some process later.
+be stopped when device file will be accessed by other process.
  
 Additionally, it can monitor PTY sessions to check that there are active users logged in and stop it's processes to 
 avoid influence with somebody's work.
@@ -61,7 +61,7 @@ Above configuration will check all /dev/nvidiaN device files for open every 10 s
 (nvidia-smi command is ignored), start command `miner-run`, which should occupy all GPUs.
 If some program (like TF or pytorch) will open any of GPUs, miner will be terminated.
 
-It's possible to fine-tune individual GPU access, which allows you to preempt only some of GPUs. This is example of such configuration:
+It's possible to fine-tune individual GPU access, which allows you to preempt miners or individual GPUs. In this example, we define per-gpu miner process which gets started with proper CUDA_VISIBLE_DEVICE variable set:
 ```ini
 [defaults]
 ; how frequently perform GPU and tty checks
@@ -99,9 +99,6 @@ whitelist=user1,user2
 ; how long user should be inactive in tty to be ignored by checker
 idle_seconds=300
 ```
-
-In this case, both `miner-run` programs will be started with appropriate CUDA_VISIBLE_DEVICES environment variable, 
-which allows you to use the same miner configuration.
 
 ## Donations
 
