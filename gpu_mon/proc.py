@@ -165,7 +165,7 @@ class ProcessTracker:
         if proc_conf.log is None:
             stdout = None
         else:
-            stdout = os.open(proc_conf.log, os.O_APPEND)
+            stdout = os.open(proc_conf.log, os.O_APPEND if os.path.exists(proc_conf.log) else os.O_CREAT)
         p = subprocess.Popen(args, cwd=proc_conf.dir, env=env, stdout=stdout, stderr=subprocess.STDOUT)
         return p
 
