@@ -200,7 +200,7 @@ class ProcessTracker:
         Check that this pid is from our process
         """
         for proc_gpu_id, proc in self.started.items():
-            if proc_gpu_id == gpu_id and proc.pid == pid:
+            if (proc_gpu_id is None or proc_gpu_id == gpu_id) and proc.pid == pid:
                 return True
         return False
 
