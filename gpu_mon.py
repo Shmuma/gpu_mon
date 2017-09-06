@@ -33,11 +33,7 @@ if __name__ == "__main__":
     try:
         while True:
             processes = proc.get_processes(gpus)
-            for p in processes:
-                log.info(p)
             active_users = tty.active_users(conf.tty_conf)
-            for u in active_users:
-                log.info(u)
             proc_tracker.check(gpus, processes, active_users)
             time.sleep(conf.interval_seconds)
     except KeyboardInterrupt:
