@@ -186,7 +186,8 @@ class ProcessTracker:
     def _stop_everything(self):
         if not self.started:
             return
-        for gpu_id in self.started.keys():
+        gpu_ids = list(self.started.keys())
+        for gpu_id in gpu_ids:
             self.log.info("Stopping proc for %s", gpu.format_gpu_id(gpu_id))
             self._stop_by_id(gpu_id)
 
