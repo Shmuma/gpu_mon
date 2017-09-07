@@ -19,6 +19,8 @@ avoid influence with somebody's work.
 
 Written on python3. Developed and tested under linux (ubuntu and debian) with NVidia cards. Don't have external 
 libraries requirements except standard library.
+
+To see all processes from all users, script need either run as root or fuser tool need to have suid bit.
   
 ## Running
 
