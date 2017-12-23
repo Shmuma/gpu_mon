@@ -1,6 +1,8 @@
 # gpu_mon
 Python script which monitors gpu access and manages external programs when GPU is idle
 
+[Blog post on medium.com](https://medium.com/mlreview/using-your-idle-deep-learning-hardware-for-mining-c1b9887491fa)
+
 ## How
 
 Every N seconds it checks /dev/nvidiaX device file for other processes accessing them (using fuser tool). 
